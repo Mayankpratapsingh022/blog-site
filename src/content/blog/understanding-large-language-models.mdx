@@ -1,214 +1,253 @@
 ---
-title: "LLM Basics"
-description: "Discover when it's appropriate to use Typescript's `any` type despite its risks. Learn about legitimate cases where `any` is necessary"
-image: "/images/blog/any-considered.webp"
+title: "Understanding Large Language Models (LLMs)"
+description: "Explore the fundamentals of Large Language Models (LLMs), their architecture, scaling laws, emergent properties, and how they predict the next word."
 date: "2025-05-30"
 author: "Mayank Pratap Singh"
+image: "images/blog/ULLM/1.png"
+---
+
+## What is an LLM**?**
+
+![LLMs is a next word predictor](images/blog/ULLM/1.png)
+
+Large Language Models (LLMs) are advanced neural networks trained on vast amounts of text data to predict the next word in a sequence. They function as **probabilistic engines** that analyze previous words and generate coherent, human-like text. At their core, they are **next-word predictors**, where tokens form meaningful sentences when combined.
+
+> **LLMs are probabilistic engines for predicting the next token.**
+
+## Predicting the Next Word with OpenAI's LLM
+
+Let's implement a simple example to see how an LLM predicts the next word given a partial sentence:
+
+```python
+import openai
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Initialize OpenAI client
+client = openai.OpenAI()
+
+# The incomplete sentence
+sentence = "After years of hard work, your effort will take you"
+
+# Get completion with logprobs
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt=sentence,
+    max_tokens=1,
+    logprobs=50,  # Request top 50 logprobs
+    temperature=0
+)
+
+# Extract and convert logprobs to probabilities
+logprobs = response.choices[0].logprobs.top_logprobs[0]
+print(f"Number of tokens received: {len(logprobs)}")
+
+probs = {token: np.exp(logprob) for token, logprob in logprobs.items()}
+
+# Normalize probabilities
+total = sum(probs.values())
+probs = {token: prob / total for token, prob in probs.items()}
+
+# Sort probabilities
+sorted_items = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+
+print("\nTop 10 tokens with their probabilities:")
+for token, prob in sorted_items[:10]:
+    print(f"'{token}': {prob:.3%}")
+
+tokens, probabilities = zip(*sorted_items)
+
+# Create visualization showing all available tokens
+plt.figure(figsize=(15, 10))  # Make figure larger to accommodate more tokens
+plt.barh(range(len(tokens)), probabilities)
+plt.yticks(range(len(tokens)), tokens)
+plt.title(f'Distribution of Next Token Probabilities (Total tokens: {len(tokens)})')
+plt.xlabel('Probability')
+plt.ylabel('Token')
+
+# Add percentage labels for top probabilities only (to avoid cluttering)
+for i, prob in enumerate(probabilities[:10]):  # Show labels for top 10
+    plt.text(prob, i, f'{prob:.1%}', va='center')
+
+plt.tight_layout()
+plt.show()
+```
+
+
+Using the given code, we can predict the **next word** in a sentence based on probabilities assigned by a **Large Language Model (LLM).**  
+
+### Input Sentence:  
+> *"After years of hard work, your effort will take you"*
+
+![After years of hard work ...](images/blog/ULLM/2_next_word_predictor.png)
+
+
+### Output:  
+Below are the **top 10 predicted next words** along with their probabilities:  
+
+```python
+Top 10 tokens with their probabilities:
+'to': 79.911%
+'far': 3.898%
+'places': 3.222%
+'where': 2.141%
+'a': 1.301%
+'higher': 1.251%
+'on': 0.893%
+'into': 0.835%
+'closer': 0.756%
+'beyond': 0.651%
+```
+
+
+### Understanding the Probabilities  
+- The **first token ("to")** has the highest probability (**79.9%**) because it is the most likely word that fits naturally after the given sentence.  
+- The probability of each following word **gradually decreases** as the LLM considers less common but still possible completions.  
+
+> **This is the key idea behind Large Language Models:**  
+> LLMs work as **probabilistic engines**, predicting the most likely next token based on learned patterns.  
+
+
+## Why is There "Large" in LLMs?
+
+Large Language Models (LLMs) are called **"Large"** because their **size plays a crucial role** in their performance. There are three key reasons for this:
+
+1. **Scaling Law with Size**  
+2. **Tasks and Capabilities**  
+3. **Emergent Properties**  
+
+---
+
+### 1. Scaling Law with Size  
+![Scaling Laws](images\blog\ULLM\3_Scaling_laws.png)
+
+LLMs have **billions to trillions of parameters.** The first major paper to explore scaling laws was the  [**GPT-3 paper**]( https://arxiv.org/pdf/2005.14165) (*Language Models are Few-Shot Learners*). The research demonstrated that **as we increase the model size**—from **1.3B parameters to 13B to 175B**—the model’s performance **dramatically improves.**  
+
+Over the years, we have seen an **exponential increase** in the size of LLMs, from the 1950s to today.  
+
+> **📈 The larger the model, the better it performs on complex tasks.**  
+
+
+Here you can see models with different parameters  of GPT-2
+
+![GPT-2 Model Different Paramters](images/blog/ULLM/5_GPT_2_DIFFERENT_PARAMETER_SIZES.png)
+
+
+
+In the below graph, the **orange dots** represent language models, showing how their size has increased drastically over time. Some models have already **crossed 1 trillion parameters!**  
+
+
+![The Drive to bigger ai models](images/blog/ULLM/6_LLM_parameters.png)
+
+
 ---
 
 
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Row 1, Col 1 | Row 1, Col 2 | Row 1, Col 3 |
-| Row 2, Col 1 | Row 2, Col 2 | Row 2, Col 3 |
-| Row 3, Col 1 | Row 3, Col 2 | Row 3, Col 3 |
+### 2. Why Do We Care About the Size of LLMs?  
+
+The size of an LLM matters because of **Emergent Properties.**  
+
+> **An ability is emergent if it is not present in smaller models but appears in larger models.**  
+
+For example, as LLMs grow, they become better at tasks like:  
+
+- **Arithmetic** (solving complex equations)  
+- **Translation** (understanding and translating languages)  
+- **Word Unscrambling** (rearranging letters into meaningful words)  
+
+In the figure below, the **X-axis represents model size** (or computational power), and we can observe a **pickup point**—a stage where models **suddenly start performing significantly better** at these tasks.  
+
+
+![Emergent Behaviour of LLMs](images/blog/ULLM/7_emergent_behaviour.png)
+
+---
+
+### 3. Beyond Next-Word Prediction  
+
+At larger sizes, LLMs **evolve beyond simple word prediction** and start excelling in **niche-based tasks** such as:  
+
+- **Translation** – Accurate multi-language conversion  
+- **Summarization** – Extracting key points from long texts  
+- **Grammar Checking** – Detecting and fixing errors in sentences  
+
+![LLMs are beyond next word predictions](images\blog\ULLM\8_llm_new_propertiecs.png)
+
+> **This is why there is a race to build larger and larger models.**  
+> The more parameters an LLM has, the better it performs across diverse NLP tasks.  
+
+---
+
+## NLP vs. LLMs  
+
+LLMs have revolutionized **Natural Language Processing (NLP)** by moving beyond traditional task-specific models. The key difference between **earlier NLP models** and **modern LLMs** is their ability to handle a **wide range of tasks** due to **emergent properties**.  
 
 | **NLP** | **LLMs** |
 | --- | --- |
-| Earlier NLP models were Designed for specific tasks like Language Translation  | Can do a wide range of tasks due to [emergent properties] |
-<center>
-<iframe width="350" height="215" src="https://www.youtube.com/embed/WjhDDeZ7DvM?si=Cj4EVnYaAaz08W2T" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-</center>
+| Designed for specific tasks like translation, sentiment analysis, or speech recognition. | Can handle multiple tasks with a single model. |
+| Required separate models for different applications. | One model can generalize across tasks. |
+| Limited contextual understanding. | Deep contextual awareness through self-supervised learning. |
 
-`any` is an extremely powerful type in TypeScript. It lets you treat a value as if you were in JavaScript, not TypeScript. This means that it disables all of TypeScript's features - type checking, autocomplete, and safety.
+> Earlier language models **could not write emails or generate creative text** from custom instructions—tasks that are now trivial for modern LLMs.
 
-```ts
-const myFunction = (input: any) => {
-  input.someMethod();
-};
+---
 
-myFunction("abc"); // This will fail at runtime!
-```
+## The Core of LLMs: Transformer Architecture  
 
-Using `any` is rightly considered harmful by most of the community. There are [ESLint rules](https://typescript-eslint.io/rules/no-explicit-any/) to prevent its use. This can turn developers off using `any` entirely.
+![Transformers Architecture Image](images/blog/ULLM/8_Transformers.webp)
 
-However, there are a few advanced cases where `any` is always the right choice. Here are some of them:
+At the heart of **LLMs** is the **Transformer architecture**, introduced in the landmark paper **["Attention Is All You Need"](https://arxiv.org/pdf/1706.03762)**.  
 
-## Type Argument Constraints
+Transformers **revolutionized NLP** by replacing traditional models like LSTMs and GRUs with a **self-attention mechanism**, allowing for:  
+- Better long-range dependencies in text.  
+- Parallel processing for faster training.  
+- Scalability, leading to larger and more powerful models.  
 
-Let's imagine we wanted to implement the `ReturnType` utility in TypeScript. This utility takes a function type and returns the type of its return value.
+---
 
-We need to create a [generic type](https://www.totaltypescript.com/no-such-thing-as-a-generic#generic-types) which takes a function type as a type argument. If we restricted ourselves to not use `any`, we might use `unknown`:
+## How Are LLMs Built?  
 
-```ts
-type ReturnType<T extends (...args: unknown[]) => unknown> =
-  // Not important for our explanation:
-  T extends (...args: unknown[]) => infer R ? R : never;
-```
+Building an **LLM** involves two key stages:  
 
-It's not important to understand -all- of this code, only the constraint - `T extends (...args: unknown[]) => unknown`. What we're saying here is that only functions which accept an arguments array of `unknown[]` and return `unknown` are allowed.
+### 1. Pretraining  
+The model is trained on **a vast and diverse dataset** from sources like:  
+- Wikipedia  
+- Books  
+- Reddit  
+- OpenWeb Corpus  
 
-It seems to work fine for functions which have no arguments:
+> **Pretraining** helps the model develop a broad understanding of language, grammar, and reasoning but does not fine-tune it for specific tasks.
 
-```ts
-const myFunction = () => {
-  console.log("Hey!");
-};
+### 2. Finetuning  
+Once the model is pretrained, it undergoes **fine-tuning** on a narrower, **task-specific dataset**. This helps in:  
+- Improving accuracy for domain-specific applications.  
+- Aligning the model to a particular use case (e.g., coding assistants, chatbots, content generation).  
 
-type Result = ReturnType<typeof myFunction>;
-```
+![LLms pretraining and finetuning](images/blog/ULLM/9_pretraining.png)
 
-But it stops working as soon as we add an argument:
 
-```ts
-const myFunction = (input: string) => {
-  console.log("Hey!");
-};
+### Reinforcement Learning from Human Feedback (RLHF)  
+To make models **safer and more aligned with human expectations**, LLMs undergo **RLHF**:  
+- Human annotators evaluate responses and rank them.  
+- The model learns from feedback and adjusts its outputs accordingly.  
+- This improves **coherence, relevance, and ethical alignment** of responses.  
 
-type Result = ReturnType<typeof myFunction>;
-```
+---
 
-In fact, it only works if we change the parameter of our function to `input: unknown`:
+### Why Does Pretraining Matter?  
 
-```ts
-const myFunction = (input: unknown) => {
-  console.log("Hey!");
-};
+Training an LLM is an **expensive** process, costing **millions of dollars** due to:  
+- Massive computing power requirements.  
+- Extensive dataset preparation.  
+- The need for specialized GPUs and TPUs.  
 
-type Result = ReturnType<typeof myFunction>;
-```
+However, once pretrained, **LLMs become powerful general-purpose AI models**, capable of handling tasks ranging from **coding assistance to medical research.**  
 
-So accidentally, we've created a `ReturnType` function that only works on functions which accept `unknown` as an argument. This is not what we wanted. We wanted it to work on any function.
-
-The solution is to use `any[]` as the type argument constraint:
-
-```ts
-type ReturnType<T extends (...args: any[]) => any> = T extends (
-  ...args: any[]
-) => infer R
-  ? R
-  : never;
-
-const myFunction = (input: string) => {
-  console.log("Hey!");
-};
-
-type Result = ReturnType<typeof myFunction>;
-```
-
-Now it works as expected. We're declaring that we don't care what types the function accepts - it could be anything.
-
-The reason this is safe is because we're deliberately declaring a wide type. We're saying "I don't care what the function accepts, as long as it's a function". This is a safe use of `any`.
-
-## Returning Conditional Types From Generic Functions
-
-In some places, TypeScript's narrowing abilites are not as good as we'd like them to be. Let's say we want to create a function which returns different types based on a condition:
-
-```ts
-const youSayGoodbyeISayHello = (input: "hello" | "goodbye") => {
-  if (input === "goodbye") {
-    return "hello";
-  } else {
-    return "goodbye";
-  }
-};
-
-const result = youSayGoodbyeISayHello("hello");
-```
-
-This function isn't really doing what we want it to. We want it to return the type `"goodbye"` when we pass in `"hello"`. But currently, `result` is typed as `"hello" | "goodbye"`.
-
-We can fix this by using a conditional type:
-
-```ts
-const youSayGoodbyeISayHello = <TInput extends "hello" | "goodbye">(
-  input: TInput,
-): TInput extends "hello" ? "goodbye" : "hello" => {
-  if (input === "goodbye") {
-    return "hello";
-  } else {
-    return "goodbye";
-  }
-};
-
-const goodbye = youSayGoodbyeISayHello("hello");
-
-const hello = youSayGoodbyeISayHello("goodbye");
-
-const hello: "hello";
-```
-
-We've added a conditional type to the return type of the function which mirrors our runtime logic. If `TInput`, inferred from the runtime argument input, is `"hello"`, we return `"goodbye"`. Otherwise, we return `"hello"`.
-
-But there's a problem. I've deliberately disabled the errors in the snippet above. Let's see what happens when we enable them:
-
-```ts
-const youSayGoodbyeISayHello = <TInput extends "hello" | "goodbye">(
-  input: TInput,
-): TInput extends "hello" ? "goodbye" : "hello" => {
-  if (input === "goodbye") {
-    return "hello";
-  } else {
-    return "goodbye";
-  }
-};
-```
-
-Ouch. TypeScript doesn't seem to be matching up the conditional type with the runtime logic. `"hello"` or `"goodbye"` can't be returned from the function.
-
-We can fix this by using `as`, and forcing it to be the correct conditional type:
-
-```ts
-const youSayGoodbyeISayHello = <TInput extends "hello" | "goodbye">(
-  input: TInput,
-): TInput extends "hello" ? "goodbye" : "hello" => {
-  if (input === "goodbye") {
-    return "hello" as TInput extends "hello" ? "goodbye" : "hello";
-  } else {
-    return "goodbye" as TInput extends "hello" ? "goodbye" : "hello";
-  }
-};
-```
-
-We can make this nicer by extracting that logic to a common generic type:
-
-```ts
-type YouSayGoodbyeISayHello<TInput extends "hello" | "goodbye"> =
-  TInput extends "hello" ? "goodbye" : "hello";
-
-const youSayGoodbyeISayHello = <TInput extends "hello" | "goodbye">(
-  input: TInput,
-): YouSayGoodbyeISayHello<TInput> => {
-  if (input === "goodbye") {
-    return "hello" as YouSayGoodbyeISayHello<TInput>;
-  } else {
-    return "goodbye" as YouSayGoodbyeISayHello<TInput>;
-  }
-};
-```
-
-But in these situations, it often makes more sense to use as `any`:
-
-```ts
-const youSayGoodbyeISayHello = <TInput extends "hello" | "goodbye">(
-  input: TInput,
-): TInput extends "hello" ? "goodbye" : "hello" => {
-  if (input === "goodbye") {
-    return "hello" as any;
-  } else {
-    return "goodbye" as any;
-  }
-};
-```
-
-Yes, this does make our function less type-safe. We could accidentally return `"bonsoir"` from the function instead.
-
-But in these situations, it's often better to use `as any` and add a unit test for this function's behavior. Because of TypeScript's limitations in checking this stuff, this is often as close as you'll get to type safety.
-
-There are several other use cases like this, where inside generic functions you need to use `any` to get around TypeScript's limitations. To me, this is fine.
+---
 
 ## Conclusion
 
-A question remains: should you ban `any` from your codebase? I think, on balance, the answer should be yes. You should turn on the `ESLint rule` which prevents its use, and you should avoid it wherever possible.
+That’s a wrap for this introduction to `Large Language Models` (LLMs)! We've explored the fundamentals, from how LLMs predict the next word to their `scaling laws`, `emergent properties`, and `architecture`. This is just the beginning—understanding these basics will lay the groundwork for building, fine-tuning, and optimizing LLMs in future deep dives.
 
-However, there are cases where `any` is needed. They're worth using eslint-disable to get around them. So, bookmark this article, and attach it to your PR's when you feel the need to use it.
+In the upcoming blogs, we’ll go beyond theory and explore practical implementations, diving into how to build LLM models from scratch and make them more efficient.
+
+Stay tuned—because we’re just getting started! 
