@@ -1,0 +1,252 @@
+---
+title: "Understanding Large Language Models (LLMs)"
+description: "Explore the fundamentals of Large Language Models (LLMs), their architecture, scaling laws, emergent properties, and how they predict the next word."
+date: "2025-05-30"
+author: "Mayank Pratap Singh"
+---
+
+## What is an LLM**?**
+
+![LLMs is a next word predictor](images\blog\ULLM\1.png)
+
+Large Language Models (LLMs) are advanced neural networks trained on vast amounts of text data to predict the next word in a sequence. They function as **probabilistic engines** that analyze previous words and generate coherent, human-like text. At their core, they are **next-word predictors**, where tokens form meaningful sentences when combined.
+
+> **LLMs are probabilistic engines for predicting the next token.**
+
+## Predicting the Next Word with OpenAI's LLM
+
+Let's implement a simple example to see how an LLM predicts the next word given a partial sentence:
+
+```python
+import openai
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Initialize OpenAI client
+client = openai.OpenAI()
+
+# The incomplete sentence
+sentence = "After years of hard work, your effort will take you"
+
+# Get completion with logprobs
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt=sentence,
+    max_tokens=1,
+    logprobs=50,  # Request top 50 logprobs
+    temperature=0
+)
+
+# Extract and convert logprobs to probabilities
+logprobs = response.choices[0].logprobs.top_logprobs[0]
+print(f"Number of tokens received: {len(logprobs)}")
+
+probs = {token: np.exp(logprob) for token, logprob in logprobs.items()}
+
+# Normalize probabilities
+total = sum(probs.values())
+probs = {token: prob / total for token, prob in probs.items()}
+
+# Sort probabilities
+sorted_items = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+
+print("\nTop 10 tokens with their probabilities:")
+for token, prob in sorted_items[:10]:
+    print(f"'{token}': {prob:.3%}")
+
+tokens, probabilities = zip(*sorted_items)
+
+# Create visualization showing all available tokens
+plt.figure(figsize=(15, 10))  # Make figure larger to accommodate more tokens
+plt.barh(range(len(tokens)), probabilities)
+plt.yticks(range(len(tokens)), tokens)
+plt.title(f'Distribution of Next Token Probabilities (Total tokens: {len(tokens)})')
+plt.xlabel('Probability')
+plt.ylabel('Token')
+
+# Add percentage labels for top probabilities only (to avoid cluttering)
+for i, prob in enumerate(probabilities[:10]):  # Show labels for top 10
+    plt.text(prob, i, f'{prob:.1%}', va='center')
+
+plt.tight_layout()
+plt.show()
+```
+
+
+Using the given code, we can predict the **next word** in a sentence based on probabilities assigned by a **Large Language Model (LLM).**  
+
+### Input Sentence:  
+> *"After years of hard work, your effort will take you"*
+
+![After years of hard work ...](images\blog\ULLM\2_next_word_predictor.png)
+
+
+### Output:  
+Below are the **top 10 predicted next words** along with their probabilities:  
+
+```python
+Top 10 tokens with their probabilities:
+'to': 79.911%
+'far': 3.898%
+'places': 3.222%
+'where': 2.141%
+'a': 1.301%
+'higher': 1.251%
+'on': 0.893%
+'into': 0.835%
+'closer': 0.756%
+'beyond': 0.651%
+```
+
+
+### Understanding the Probabilities  
+- The **first token ("to")** has the highest probability (**79.9%**) because it is the most likely word that fits naturally after the given sentence.  
+- The probability of each following word **gradually decreases** as the LLM considers less common but still possible completions.  
+
+> **This is the key idea behind Large Language Models:**  
+> LLMs work as **probabilistic engines**, predicting the most likely next token based on learned patterns.  
+
+
+## Why is There "Large" in LLMs?
+
+Large Language Models (LLMs) are called **"Large"** because their **size plays a crucial role** in their performance. There are three key reasons for this:
+
+1. **Scaling Law with Size**  
+2. **Tasks and Capabilities**  
+3. **Emergent Properties**  
+
+---
+
+### 1. Scaling Law with Size  
+![Scaling Laws](images\blog\ULLM\3_Scaling_laws.png)
+
+LLMs have **billions to trillions of parameters.** The first major paper to explore scaling laws was the  [**GPT-3 paper**]( https://arxiv.org/pdf/2005.14165) (*Language Models are Few-Shot Learners*). The research demonstrated that **as we increase the model size**—from **1.3B parameters to 13B to 175B**—the model’s performance **dramatically improves.**  
+
+Over the years, we have seen an **exponential increase** in the size of LLMs, from the 1950s to today.  
+
+> **📈 The larger the model, the better it performs on complex tasks.**  
+
+
+Here you can see models with different parameters  of GPT-2
+
+![GPT-2 Model Different Paramters](images\blog\ULLM\5_GPT_2_DIFFERENT_PARAMETER_SIZES.png)
+
+
+
+In the below graph, the **orange dots** represent language models, showing how their size has increased drastically over time. Some models have already **crossed 1 trillion parameters!**  
+
+
+![The Drive to bigger ai models](images\blog\ULLM\6_LLM_parameters.png)
+
+
+---
+
+
+### 2. Why Do We Care About the Size of LLMs?  
+
+The size of an LLM matters because of **Emergent Properties.**  
+
+> **An ability is emergent if it is not present in smaller models but appears in larger models.**  
+
+For example, as LLMs grow, they become better at tasks like:  
+
+- **Arithmetic** (solving complex equations)  
+- **Translation** (understanding and translating languages)  
+- **Word Unscrambling** (rearranging letters into meaningful words)  
+
+In the figure below, the **X-axis represents model size** (or computational power), and we can observe a **pickup point**—a stage where models **suddenly start performing significantly better** at these tasks.  
+
+
+![Emergent Behaviour of LLMs](images\blog\ULLM\7_emergent_behaviour.png)
+
+---
+
+### 3. Beyond Next-Word Prediction  
+
+At larger sizes, LLMs **evolve beyond simple word prediction** and start excelling in **niche-based tasks** such as:  
+
+- **Translation** – Accurate multi-language conversion  
+- **Summarization** – Extracting key points from long texts  
+- **Grammar Checking** – Detecting and fixing errors in sentences  
+
+![LLMs are beyond next word predictions](images\blog\ULLM\8_llm_new_propertiecs.png)
+
+> **This is why there is a race to build larger and larger models.**  
+> The more parameters an LLM has, the better it performs across diverse NLP tasks.  
+
+---
+
+## NLP vs. LLMs  
+
+LLMs have revolutionized **Natural Language Processing (NLP)** by moving beyond traditional task-specific models. The key difference between **earlier NLP models** and **modern LLMs** is their ability to handle a **wide range of tasks** due to **emergent properties**.  
+
+| **NLP** | **LLMs** |
+| --- | --- |
+| Designed for specific tasks like translation, sentiment analysis, or speech recognition. | Can handle multiple tasks with a single model. |
+| Required separate models for different applications. | One model can generalize across tasks. |
+| Limited contextual understanding. | Deep contextual awareness through self-supervised learning. |
+
+> Earlier language models **could not write emails or generate creative text** from custom instructions—tasks that are now trivial for modern LLMs.
+
+---
+
+## The Core of LLMs: Transformer Architecture  
+
+![Transformers Architecture Image](images\blog\ULLM\8_Transformers.webp)
+
+At the heart of **LLMs** is the **Transformer architecture**, introduced in the landmark paper **["Attention Is All You Need"](https://arxiv.org/pdf/1706.03762)**.  
+
+Transformers **revolutionized NLP** by replacing traditional models like LSTMs and GRUs with a **self-attention mechanism**, allowing for:  
+- Better long-range dependencies in text.  
+- Parallel processing for faster training.  
+- Scalability, leading to larger and more powerful models.  
+
+---
+
+## How Are LLMs Built?  
+
+Building an **LLM** involves two key stages:  
+
+### 1. Pretraining  
+The model is trained on **a vast and diverse dataset** from sources like:  
+- Wikipedia  
+- Books  
+- Reddit  
+- OpenWeb Corpus  
+
+> **Pretraining** helps the model develop a broad understanding of language, grammar, and reasoning but does not fine-tune it for specific tasks.
+
+### 2. Finetuning  
+Once the model is pretrained, it undergoes **fine-tuning** on a narrower, **task-specific dataset**. This helps in:  
+- Improving accuracy for domain-specific applications.  
+- Aligning the model to a particular use case (e.g., coding assistants, chatbots, content generation).  
+
+![LLms pretraining and finetuning](images\blog\ULLM\9_pretraining.png)
+
+
+### Reinforcement Learning from Human Feedback (RLHF)  
+To make models **safer and more aligned with human expectations**, LLMs undergo **RLHF**:  
+- Human annotators evaluate responses and rank them.  
+- The model learns from feedback and adjusts its outputs accordingly.  
+- This improves **coherence, relevance, and ethical alignment** of responses.  
+
+---
+
+### Why Does Pretraining Matter?  
+
+Training an LLM is an **expensive** process, costing **millions of dollars** due to:  
+- Massive computing power requirements.  
+- Extensive dataset preparation.  
+- The need for specialized GPUs and TPUs.  
+
+However, once pretrained, **LLMs become powerful general-purpose AI models**, capable of handling tasks ranging from **coding assistance to medical research.**  
+
+---
+
+## Conclusion
+
+That’s a wrap for this introduction to `Large Language Models` (LLMs)! We've explored the fundamentals, from how LLMs predict the next word to their `scaling laws`, `emergent properties`, and `architecture`. This is just the beginning—understanding these basics will lay the groundwork for building, fine-tuning, and optimizing LLMs in future deep dives.
+
+In the upcoming blogs, we’ll go beyond theory and explore practical implementations, diving into how to build LLM models from scratch and make them more efficient.
+
+Stay tuned—because we’re just getting started! 
