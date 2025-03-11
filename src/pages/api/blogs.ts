@@ -1,45 +1,50 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
 import { NextApiRequest, NextApiResponse } from "next";
 
-// Define the blog content directory
 const BLOGS_DIR = path.join(process.cwd(), "content", "blog");
 
-// Function to get all blog metadata from MDX files
+// Function to get all blog files dynamically
 const getAllBlogs = () => {
   const files = fs.readdirSync(BLOGS_DIR);
 
   const blogs = files.map((filename) => {
     const filePath = path.join(BLOGS_DIR, filename);
     const fileContent = fs.readFileSync(filePath, "utf-8");
-    const { data } = matter(fileContent); // Extract frontmatter metadata
+
+    // Extract metadata from first few lines (Basic Parsing)
+    const lines = fileContent.split("\n");
+    const metadata: { [key: string]: string } = {};
+    
+    for (let line of lines) {
+      if (line.startsWith("---")) continue; // Skip frontmatter delimiters
+      if (line.trim() === "") break; // Stop parsing metadata when empty line is found
+      const [key, value] = line.split(":").map((s) => s.trim());
+      metadata[key] = value.replace(/"/g, ""); // Remove quotes
+    }
 
     return {
-      title: data.title,
-      slug: filename.replace(".mdx", ""), // Remove .mdx extension for URL
-      date: data.date,
-      category: data.category || "General",
+      title: metadata.title || "Untitled",
+      slug: filename.replace(".mdx", ""),
+      date: metadata.date || "Unknown Date",
+      category: metadata.category || "General",
+      content: fileContent, // If you need full content
     };
   });
 
-  // Sort blogs by date (newest first)
-  return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date
 };
 
-// API route handler
+// API Route Handler
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Enable CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Allow cross-origin requests
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle preflight requests
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Allow only GET requests
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
