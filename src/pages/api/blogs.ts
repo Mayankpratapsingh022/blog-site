@@ -4,7 +4,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 const BLOGS_DIR = path.join(process.cwd(), "content", "blog");
 
-// Function to get all blog files dynamically
 const getAllBlogs = () => {
   const files = fs.readdirSync(BLOGS_DIR);
 
@@ -16,7 +15,7 @@ const getAllBlogs = () => {
     const lines = fileContent.split("\n");
     const metadata: { [key: string]: string } = {};
     
-    for (let line of lines) {
+    for (const line of lines) {  // ✅ Fix: Use "const" instead of "let"
       if (line.startsWith("---")) continue; // Skip frontmatter delimiters
       if (line.trim() === "") break; // Stop parsing metadata when empty line is found
       const [key, value] = line.split(":").map((s) => s.trim());
@@ -34,6 +33,7 @@ const getAllBlogs = () => {
 
   return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date
 };
+
 
 // API Route Handler
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
