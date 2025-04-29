@@ -1,0 +1,387 @@
+---
+title: "[3] Prompt Engineering: Mastering Chain-of-Thought, HyDE, and Step-Back Techniques"
+description: "This blog explores advanced prompt engineering strategies—Chain-of-Thought, Step-Back Prompting, and HyDE (Hypothetical Document Embeddings)—to enhance reasoning and retrieval quality in LLMs. It offers practical examples, comparisons, and implementation steps to help developers build smarter, more context-aware AI systems."
+image: "/images/blog/chain-of-thought/7.gif"
+date: "2025-04-23"
+author: "Mayank Pratap Singh"
+category: "RAG"
+---
+
+## **Table of contents**
+
+- The Challenge: From Shallow Answers to Deeper Understanding
+- Basic Prompting: The Limits
+- Chain of Thought Prompting
+  - Prompt engineering for CoT: We modify our user prompt to encourage reasoning
+  - Standard vs Chain-of-Thought Prompting
+- Step-Back Prompting
+  - Why Use Step-Back Prompting?
+- HyDE: Hypothetical Document Embeddings
+  - Use HyDE
+  - Implementation of HyDE
+    - Step 1: Prepare the Knowledge Base
+    - Step 2: Embed the Documents and Build a Vector Store
+    - Step 3: Generate a Hypothetical Answer from the LLM
+    - Step 4: Embed the Hypothetical Answer
+    - Step 5: Perform Vector Similarity Search
+    - Step 6: Use Retrieved Document to Answer the Original Question
+- Conclusion
+
+
+**Introduction:**
+
+As prompt engineering continues to evolve, techniques like Chain-of-Thought, HyDE, and Step-Back prompting have become critical tools for improving reasoning and output quality in large language models. In this article, we’ll explore how these advanced strategies work, when to use them, and how they can be combined effectively in real-world applications.
+
+If you're just beginning your journey with Retrieval-Augmented Generation (RAG), or looking to deepen your understanding of advanced retrieval strategies, you might also find these resources valuable:
+
+- [**Introduction to RAG**](https://mayankpratapsingh022-introduction-to-rag.hashnode.dev/introduction-to-rag)
+- [**Advanced RAG:**](https://mayankpratapsingh022-introduction-to-rag.hashnode.dev/introduction-to-rag) [**Enhancing Retrieval with Parallel Queries and Reciprocal Rank Fusion**](https://mayankpratapsingh022-introduction-to-rag.hashnode.dev/advanced-rag-enhancing-retrieval-with-parallel-queries-and-reciprocal-rank-fusion)
+
+
+![Teacher teaching](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/1.png)
+
+
+Pragya a high school science teacher, sighs as she reviews her quiz questions on gas laws.
+
+![Gas Law](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/2.webp)
+
+Despite using a powerful AI to help generate them, the questions feel shallow and the explanations lack depth. Her students are curious and often ask tricky “what if” questions that require more than straightforward answers. How can she get the AI to provide insightful, step-by-step reasoning or creative, principle-based explanations that truly engage her students?
+
+
+
+![Chain of thoughts,step-back prompting, and HyDE](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/3.png)
+
+This blog post follows Pragya’s journey as she discovers advanced **prompt engineering** techniques to solve this real-world education problem. We’ll explore how **Chain-of-Thought (CoT) prompting**, **HyDE (Hypothetical Document Embeddings)**, and **Step-Back Prompting** can transform simple queries into rich educational content.
+
+
+
+# The Challenge: From Shallow Answers to Deeper Understanding
+
+![Chain of thoughts,step-back prompting, and HyDE](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/4.png)
+
+Imagine Pragya asks an AI: *“What happens to the pressure of an ideal gas if the temperature is doubled and the volume is increased eight-fold?”* This is a multi-concept physics question. A naive, basic prompt might yield a quick answer, but likely a superficial one.
+
+Perhaps the AI just applies the formula and says: *“It becomes one -fourth of the original pressure.”* That answer is **correct**, but it’s not very **insightful**, it doesn’t show *why* or *how* we get that result. Worse, a less capable model might even confuse the relationships and give a wrong answer without explanation. Pragya’s goal is not just the answer; she wants an explanation that helps her students follow the reasoning, and maybe even a bit of context or analogy to solidify understanding.
+
+In standard prompting, we often ask a question and get an answer *as-is*. This can be hit-or-miss for complex educational queries. The AI might skip the reasoning steps or miss the underlying principle, leaving students unconvinced. What if we could guide the AI to **think more like a teacher or a student**, working through the problem or recalling relevant knowledge before answering? This is where advanced prompt engineering comes in.
+
+We’ll start by examining the **baseline approach** and its limitations, and then progressively improve it using three techniques:
+
+- **Chain-of-Thought Prompting:** guiding the AI to reason step-by-step like a student solving a problem.
+- **HyDE (Hypothetical Document Embeddings):** having the AI *imagine* a relevant document (like making notes or an answer draft) and using it to find better information.
+- **Step-Back Prompting:** letting the AI *step back* to recall high-level principles first (like a teacher reminding themselves of the core concept) before diving into details.
+
+# Basic Prompting: The Limits
+
+Before diving into advanced techniques, let’s clarify what happens with a basic prompt.
+
+![User Query --> LLM --> Final Output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/5.gif)
+
+Pragya might start with something simple like:
+> 📃 **User Prompt:** “If the temperature of an ideal gas doubles and the volume increases by a factor of 8, what happens to the pressure?”
+
+
+Without any special prompting, an LLM will try to answer directly. It might recall the ideal gas law formula **PV = nRT** and do the math.
+
+For example, a competent model might respond:
+> AI (Basic Answer): “According to the ideal gas law (PV = nRT), if the temperature doubles and volume increases eight-fold (with moles constant), the pressure will drop to one-quarter of its original value.”
+
+This isn’t bad, it’s actually correct and even mentions the ideal gas law. But sometimes the basic answer could be incomplete or the model might not explicitly show the steps. In more complex or multi-step problems, basic prompts could lead to errors or oversimplifications. The model might make a calculation mistake or give an answer with no explanation, which isn’t ideal for teaching. In our case, maybe a weaker model would just say “Pressure decreases” without quantifying or justifying, which doesn’t help students learn.
+
+
+![User Query --> LLM --> Final Output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/6.gif)
+
+
+**Why Basic Prompting Falls Short:** Large language models do have a lot of knowledge, but if we don’t prompt them cleverly, we might not get the *process* behind the answer. In education, the *journey* (reasoning, principles, context) is as important as the destination (the answer). We need prompts that elicit those reasoning steps and insights.
+
+Let’s improve this by guiding the AI to **think step-by-step**. This is where Chain-of-Thought prompting comes into play.
+
+# Chain of Thought Prompting
+
+![User Query --> LLM --> Final Output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/7.gif)
+
+Imagine you ask a student to solve a math or physics problem. If they just blurt out an answer, you’d likely say, “Hold on, **show your work**.” Chain-of-Thought (CoT) prompting does exactly that for AI models, it tells them to show their reasoning in steps, mimicking how a human would logically work through the problem.
+
+By structuring the prompt (or providing examples) that encourage stepwise thinking, we can greatly improve the model’s performance on complex tasks that require logic or calculation.
+
+**Why it matters:** For educational use cases, CoT is golden. It transforms an answer into a mini-explanation. Instead of just stating *“Pressure is quartered,”* the model will walk through the formula and reasoning. This not only helps in verifying the answer (you can see each step) but also provides a learning opportunity for students reading the solution.
+
+Let’s apply CoT prompting to Pragya’s problem. We want the AI to reason about the ideal gas question with steps. One simple way (zero-shot CoT) is to add a phrase like *“Let’s think step by step”* to the prompt,
+
+Alternatively, we can give an example of a worked solution (few-shot CoT). Here, we’ll do the simpler approach for now.
+
+### Prompt engineering for CoT: We modify our user prompt to encourage reasoning:
+
+```python
+"You are a science tutor.
+Question: If the temperature of an ideal gas doubles and the volume increases by a factor of 8 (with the amount of gas constant), what happens to the pressure?
+
+Let's think this through step by step."
+
+```
+
+By appending “Let’s think this through step by step.” we signal the model to produce a chain of thought. Now, using LangChain, we can implement this. We’ll use an LLM chain with an OpenAI model (for example) and see how to format the prompt.
+
+```python
+from langchain import OpenAI, LLMChain, PromptTemplate
+
+# 1. Initialize the language model (assuming API key is set in environment)
+llm = OpenAI(model_name="gpt-4o", temperature=0)
+
+# 2. Define a prompt template that includes an instruction to think step by step
+template = """You are a science tutor helping a student.
+Question: {question}
+
+Let's think this through step by step."""
+prompt = PromptTemplate(template=template, input_variables=["question"])
+
+# 3. Create a chain to execute this prompt
+chain = LLMChain(llm=llm, prompt=prompt)
+
+# 4. Run the chain with our question
+question = "If the temperature of an ideal gas doubles and the volume increases by 8x (with moles constant), what happens to the pressure?"
+answer = chain.run(question)
+print(answer)
+
+```
+
+In the above code:
+
+- We set up an `OpenAI` LLM with a fixed temperature.
+- The `PromptTemplate` is crafted to insert the question and then literally says *“Let’s think this through step by step.”*
+- The `LLMChain` combines the model and prompt template. When we run `chain.run(question)`, it will format the prompt and get the model’s result.
+
+
+What kind of output do we expect now? Likely, the model will produce a multi-step explanation.
+
+For example, it might output something like:
+
+
+![The law formuala](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/image.png)
+
+
+Notice the difference. The model is now showing its work, similar to how a student would derive the answer. We effectively got the AI to articulate the reasoning. This is the essence of Chain-of-Thought prompting, we structured the prompt to get a reasoning chain. The answer is more insightful for students because it explains the why and how.
+
+Standard vs Chain-of-Thought Prompting
+
+![The law formuala](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/8.png)
+
+
+On the left, a model with a basic prompt attempts a multi-step math problem and provides an incorrect or unchecked answer.
+
+On the right, with chain-of-thought prompting, the model is guided to reason through each part of the problem before giving the final answer. This step-by-step approach leads to the correct answer
+
+Beyond our specific example, CoT prompting can be used in many education scenarios: solving math problems, analyzing literature (by logically deducing themes stepwise), or breaking down a complex question into smaller ones. However, CoT alone might not inject *new information* if the model isn’t already aware of it. It just structures the reasoning.
+
+# Step-Back Prompting
+
+
+![Step Back Prompting](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/9.gif)
+
+By now, Pragya has seen the AI can show its work (CoT). The next technique in our trilogy addresses a subtle issue: sometimes, even if the AI is reasoning step-by-step, it might go down the wrong path if it starts with a mistaken assumption or gets lost in details. Complex questions often involve multiple layers, and an error in an early step can derail the whole chain-of-thought. What if, instead, we ask the model to pause, take a step back, and consider the high-level concept first?
+
+
+![Step Back Propmting  has more abstraction](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/10.png)
+
+
+This is exactly what **Step-Back Prompting** does. Step-Back prompting encourages the model to first think about an *abstract principle or category* related to the problem, then proceed to solve the specific problem with that principle in mind[**.**](https://learnprompting.org/docs/advanced/thought_generation/step_back_prompting?srsltid=AfmBOopbhLVmFRcSaIMMMV7zf4sv33NyZDHNIvlmai0PSnkBui2BdkqY#:~:text=Step,leads%20to%20more%20accurate%20reasoning)
+
+It’s like telling the LLM,
+
+“Before you solve this, remind yourself: what type of problem is this, or what general rule might apply here?”
+
+This extra step has been shown to improve accuracy on reasoning tasks by reducing errors in intermediate steps
+
+– in fact, it outperformed standard CoT in some evaluations, improving performance by up to 36% in their tests.
+
+
+### **Why Use Step-Back Prompting?**
+
+- Standard **Chain-of-Thought (CoT)** prompting sometimes fails when:
+    - The model makes a **wrong assumption early**
+    - It **gets lost in irrelevant details**
+    - The problem requires **multi-hop reasoning** or **domain identification**
+
+**Step-Back Prompting mitigates this** by:
+
+- Grounding the model’s thought process in **first principles**
+- Forcing it to clarify: *"What kind of problem is this?"* before solving it
+
+**Step-Back prompting workflow:**
+
+1. Ask the LLM an abstracted or related question first (the “step-back” question). In this case, a good step-back might be: *“What general principle or law relates pressure, volume, and temperature of a gas?”* – expecting the answer “Ideal Gas Law”.
+2. Then, armed with that, ask the original question and have the AI use the principle to reason out the answer.
+
+In practice, we do this by two consecutive prompts. LangChain can handle sequential chains or you can just do it in code manually. We’ll illustrate with a simple approach: call the LLM twice.
+
+
+```python
+# Using the same llm from before (OpenAI GPT-3.5)
+main_question = "A container with an ideal gas is cooled, causing its pressure to drop. What fundamental law explains this behavior?"
+
+# Step 1: Step-back abstraction question
+abstraction_prompt = f"Before answering, think of a general principle that might apply.\nQuestion: {main_question}\nStep-back: What general scientific law or concept is this question an example of?"
+concept = llm.run(abstraction_prompt)
+print("Identified concept:", concept.strip())
+
+# Step 2: Use the identified concept to answer the main question
+reasoning_prompt = f"General Principle: {concept}\nNow answer the question step by step: {main_question}"
+detailed_answer = llm.run(reasoning_prompt)
+print("\nDetailed answer:\n", detailed_answer)
+
+```
+
+Here’s what’s happening:
+
+- We first explicitly prompt the model to name a general principle related to the question. The prompt format says: *“Before answering, think of a general principle...”* and then asks *“What general law or concept is this an example of?”* For our question, the model should answer with something like *“Boyle’s Law”* or *“Ideal Gas Law”*. Ideally, it says **Ideal Gas Law**. Let’s say it does output: *“Ideal Gas Law (PV = nRT) is the principle at play.”*
+- We then take that concept and feed it into the next prompt: *“General Principle: Ideal Gas Law. Now answer the question step by step: [original question].”* This primes the model with the right framework. The answer that comes should leverage the Ideal Gas Law in its explanation, something like: *“According to the Ideal Gas Law (PV = nRT), if the temperature (T) of the gas decreases and the volume (V) is constant, the pressure (P) must decrease proportionally. Thus, cooling the gas causes a drop in pressure as explained by this law.”*
+
+What we’ve done is enforce a two-step reasoning: **Abstraction first, then application.**
+
+This step-back ensures the AI focuses on the *right high-level idea* before diving into the answer. It’s a bit like a teacher double-checking the topic (“This is a gas law problem”) before answering a student, to avoid going off-track.
+
+In more complex problems, the difference can be significant. If the AI mistakenly tried to apply the wrong concept initially, step-back would correct it. For example, if a biology question has some physics phrasing, a CoT might misinterpret it, but step-back could clarify which domain to think in. The result is often more accurate and principled answers.
+
+
+# HyDE: Hypothetical Document Embeddings
+
+![Hypothetical Document Embeddings](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/chain-of-thought/12.gif)
+
+Pragya’s next challenge comes when the question requires external knowledge that the LLM might not have readily at its fingertips (or in its *parameters*).
+
+Suppose a student asks:
+
+> “Has there ever been an experiment in space to verify the ideal gas law?”
+> 
+
+This is a specific question that might benefit from factual references. A straightforward approach is retrieval: search a database or the web for relevant documents and then answer using that information (this is essentially **Retrieval-Augmented Generation**). But a naive search might fail if the query is weirdly phrased or too short. The embeddings of the raw question might not match well with documents that have the answer.
+
+What if the model doesn’t remember a fact or formula? This leads us to our next technique, HyDE, which helps the AI retrieve or ground its answers in actual knowledge sources.
+
+## **Use HyDE**
+
+The idea of HyDE is clever: instead of searching using the question directly, we first ask the AI to **imagine a hypothetical document or answer** to the question, then use that as a query for our knowledge base.
+
+Essentially, the LLM generates a piece of text that *looks like* an answer (it might even contain the key terms or an explanation), and we use vector embeddings of that text to find real documents that are similar. Those real documents are likely to be relevant to the question, because the hypothetical answer was on-topic. It’s like brainstorming an answer and then letting that guide your research.
+
+**Why it matters:** In education, HyDE can help when creating content that requires accuracy or rich details. For example, if Pragya wants to generate quiz questions based on specific textbook sections, HyDE can retrieve those sections by formulating a hypothetical answer and searching for it.
+
+It reduces the chance of the AI hallucinating facts because we ground the final output in retrieved data. It’s especially useful if the question is phrased in a way that doesn’t directly match the source wording
+
+- the AI’s hypothetical answer can bridge that gap.
+
+
+## **Implementation of HyDE**
+
+Let’s see HyDE in action with LangChain. We’ll simulate a scenario: Pragya has a small knowledge base (say, a couple of reference texts about gas laws and space experiments). She’ll use HyDE to answer the question about experiments in space for ideal gases. The process involves a few steps, which we can do with LangChain components:
+
+1. Use an LLM to generate a hypothetical answer (a paragraph that might answer the question).
+2. Embed that hypothetical answer into a vector.
+3. Perform a similarity search in a vector store of documents (the knowledge base) to find relevant documents.
+4. (Optionally) use those documents plus the original question to get a final answer from the LLM.
+
+For simplicity, we’ll create a tiny knowledge base with two “documents”: one that actually contains something about an experiment in space related to gases, and another as a distractor. In a real scenario, this could be a large vector database of textbook excerpts or academic articles. We’ll use OpenAI’s text embedding model for embeddings and an OpenAI LLM for generation (again, you’d need your API key set).
+
+Let’s import relevant libaries
+
+```python
+from langchain import OpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+```
+
+### Step 1: Prepare the Knowledge Base
+
+```python
+documents = [
+    "In 1985, NASA conducted an experiment aboard the Space Shuttle to study how zero gravity affects the behavior of gases. "
+    "They sealed a sample of gas in a container and observed its pressure and volume changes, confirming that gas laws like Boyle's and Charles's law hold in microgravity.",
+
+    "The Great Wall of China is often cited as the only man-made structure visible from space, which is a myth."
+]
+```
+
+We define a minimal knowledge base with two text documents:
+
+- One contains relevant info about a **gas experiment in space**.
+- The other is a **distractor**, not related to the query.
+
+### Step 2: Embed the Documents and Build a Vector Store
+
+```python
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+
+embedding = OpenAIEmbeddings()  # Uses 'text-embedding-ada-002' by default
+vector_db = FAISS.from_texts(documents, embedding)
+
+```
+
+- We use `OpenAIEmbeddings` to convert our documents into vector representations.
+- These vectors are stored in a `FAISS` vector store, which allows **efficient similarity search**.
+
+### **Step 3: Generate a Hypothetical Answer from the LLM**
+
+```python
+from langchain import OpenAI
+
+llm = OpenAI(model_name="gpt-4o", temperature=0)
+question = "Was there ever an experiment in space to verify the ideal gas law?"
+hypo_prompt = f"Question: {question}\nHypothetical Answer:"
+hypothetical_answer = llm.run(hypo_prompt)
+print("Hypothetical answer (generated by LLM):\n", hypothetical_answer)
+```
+
+
+- A **hypothetical answer** is generated by prompting the LLM with a question.
+- This answer mimics what a correct answer might look like, even if it's made up.
+- This helps in embedding better keywords for retrieval in the next step.
+
+### **Step 4: Embed the Hypothetical Answer**
+
+```python
+hypo_vector = embedding.embed_query(hypothetical_answer)
+```
+
+- The generated hypothetical answer is embedded into a vector using the same embedding model.
+- This vector will be used to perform similarity search in the next step.
+
+### **Step 5: Perform Vector Similarity Search**
+```python
+retrieved_docs = vector_db.similarity_search_by_vector(hypo_vector, k=1)
+best_doc = retrieved_docs[0].page_content
+print("\nTop retrieved document:\n", best_doc)
+```
+
+- We perform a **similarity search** with the embedded hypothetical answer.
+- The top-matching document (based on vector closeness) is retrieved from the FAISS store.
+
+### Step 6: Use Retrieved Document to Answer the Original Question
+
+```python
+augmented_prompt = f"{best_doc}\n\nUsing the above information, answer the question: {question}"
+final_answer = llm.run(augmented_prompt)
+print("\nFinal answer with context:\n", final_answer)
+```
+
+- The top-matching document is prepended to the original question.
+- The LLM now has **relevant context**, improving its factual accuracy.
+- It can now **generate a more grounded answer** backed by the retrieved reference.
+
+Notice how HyDE worked: the **hypothetical answer** bridged the gap to the actual reference. Without HyDE, if we directly searched by the question embedding alone, we might have missed the document if the question phrasing didn’t match well. HyDE essentially rephrased the question as an answer (which contained more keywords and context), improving the retrieval. As the LangChain documentation notes, searching with raw questions might fail because the question’s embedding could be far from relevant docs, so generating a hypothetical document helps find better matches
+
+LangChain provides a `HypotheticalDocumentEmbedder` or HyDE retriever that streamlines this process. In our code, we did the steps manually for clarity, but one could use `HypotheticalDocumentEmbedder.from_llm(...)` to wrap it up.
+
+# **Conclusion**
+
+This blog explores how advanced prompt engineering techniques can transform large language model outputs from surface-level answers into deeper, more insightful explanations. Through real-world educational scenarios, it covers Chain-of-Thought prompting, Step-Back reasoning, and HyDE (Hypothetical Document Embeddings), showing how each improves accuracy, reasoning, and relevance. Practical LangChain implementations are included throughout to help you apply these methods in your own LLM workflows.
+
+---
+
+If you're building in this space or just curious to understand the core concepts better, let’s connect and grow together through shared learning.
+
+**Twitter/X:** [**x.com/Mayank_022**](https://x.com/Mayank_022)
+
+**Linkedin:** [**linkedin.com/in/mayankpratapsingh022**](https://www.linkedin.com/in/mayankpratapsingh022/)
+
+**Portfolio:** [**mayankpratapsingh.in**](https://www.mayankpratapsingh.in/)
