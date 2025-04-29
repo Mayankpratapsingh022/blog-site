@@ -1,0 +1,416 @@
+---
+title: "[1] Introduction to RAG for beginners"
+description: "Explore the fundamentals of RAG"
+image: "/images/blog/RAG/6.gif"
+date: "2025-04-23"
+author: "Mayank Pratap Singh"
+category: "RAG"
+---
+
+
+## **Table of Contents**
+
+- Why Vanilla LLMs Fall Short?
+- What is RAG?
+- RAG Architecture
+  - 1. Indexing
+  - 2. Retrieval
+  - 3. Generation
+- 1. Indexing
+- 2. Retrieval
+- 3. Generation
+- RAG Pipeline using LangChain
+  - What Exactly is LangChain and Why Every Developer Loves It
+    - Step 1. Install Required Python Libraries
+    - Step 2. Set Up Qdrant Using Docker
+    - Step 3. Load and Split Multiple PDF Files
+    - Step 4. Generate Embeddings Using OpenAI
+    - Step 5. Store Embeddings in Qdrant (Vector DB)
+    - Step 6. Search for Relevant Chunks (Retrieval)
+- Final Thoughts
+
+
+EduLeap, a rising EdTech startup, had a dream that is to build a smart study assistant capable of helping students 24/7.
+
+
+But their first attempt using a vanilla LLM was a disaster.
+
+
+
+
+
+![Problems without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/1.webp)
+
+The AI hallucinated, gave outdated information, and couldn’t answer specific course queries
+
+![Discover RAg](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/2.webp)
+
+That’s when they discovered Basic RAG (Retrieval-Augmented Generation).
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/3.gif)
+
+Problem: Vanilla LLMs only use pre-training data and can’t access specific documents or recent knowledge. When a student asked, "What is the difference between tuple and list in Python?", the model replied with half-truths.
+
+## Why Vanilla LLMs Fall Short?
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/4.webp)
+
+LLMs are trained on general-purpose internet data. They lack:
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/5.webp)
+
+
+
+- Access to **private documents** (e.g., lecture PDFs, assignments)
+- Awareness of **latest updates**
+- Ability to **reason from local context**
+
+Even fine-tuning can’t solve everything. It’s **expensive**, **time-consuming**, and **inflexible**.
+
+EduLeap needed a smarter solution — **RAG**.
+
+## What is RAG ?
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/6.gif)
+
+RAG stands for **Retrieval-Augmented Generation** which is a approach that gives LLMs access to external Knowledge sources at inference time.
+
+Instead of relying only on what’s in its pretrained weights, the LLM now *retrieves* supporting documents first, then uses them to generate better answers.
+
+Think of it like this:
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/7.webp)
+
+> You don’t memorize an entire textbook—you flip to the right page before answering a question.
+
+
+## **RAG Architecture**
+
+Now you know what is RAG, let’s break down the architecture of the RAG
+
+It has three core steps
+
+1. Indexing
+2. Retrieval
+3. Generation
+
+## 1. Indexing
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/8.webp)
+
+Imagine EduLeap's offline teachers have a giant cupboard full of **notes**,**past assignments** and **lecture transcripts**. All of this information is important, but when a student asks a question, the teacher doesn’t have time to sift through everything. So, they decide to organize it in a smarter way.
+
+Here’s what the teachers did
+
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/9.webp)
+
+They converted the notes into a digital format and broke the documents into smaller chunks.
+
+
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/10.webp)
+
+Instead of keeping entire lectures or chapters as one big blob, they **sliced the documents into smaller, overlapping pieces** — about 500 words each.
+
+This way, if a student asks about *just one concept*, the system doesn’t have to look through the whole chapter, it can just zoom in on the relevant part.
+
+After that the chunks are converted into numerical form (vectors).
+
+![Vanilla LLMs:Without RAG](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/11.webp)
+
+All these vectors (plus the original chunks) were stored in a **Vector Database**
+
+This database doesn’t store things alphabetically or by topic, it stores them in **semantic space**, so it can quickly find which chunks are *most related* to any new question.
+
+
+## 2. Retrieval
+
+Now that EduLeap had organized its knowledge into tiny, searchable chunks, it was time to **put that system to work**.
+
+Picture this:
+
+So Mayank is a student who logs in the midnight, a few hours before the exam, and asks:
+
+*“How do I read a file in Python?”*
+
+In the old days, the AI tutor would try to *remember* the answer from its pretraining and often get it wrong, outdated, or too generic.
+
+But now because of RAG, something smarter happens.
+
+
+1. The AI takes the student’s query and turns it into a vector, just like we did for the course notes earlier.
+    ![User query -> Query Embeddings](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/12.webp)
+
+
+2. It then dives into the vector database, looking for chunks that are most similar in meaning.
+    ![Query Embeddings, matching chunks](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/13.gif)
+
+
+3. Using techniques like cosine similarity, it finds, say, the top 5 most relevant pieces of text
+    ![Query Embeddings, matching chunks](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/14.webp)
+
+Maybe one chunk has an example using open(), another explains read(), and a third shows how to use with open() safely.
+
+> It’s like having a librarian who doesn’t just hand you a book but opens it to the exact paragraph you need.
+
+![Only Book , Book with highlighted para](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/15.webp)
+
+##  3. Generation
+
+![User Query -> Relevant context -> llm -> final output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/16.webp)
+
+Once the AI has gathered those helpful pieces of information, it moves to the next step: crafting a response.
+
+But this time, it’s not guessing or making things up.
+
+Instead. the AI reads the student’s question alongside the retrieved chunks, and uses this real context to generate an answer.
+
+# RAG Pipeline using LangChain
+
+
+![pdf to rag](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/17.webp)
+
+We are building a question-answering assistant for EduLeap using **LangChain**. This pipeline reads 5 PDF files (course notes), breaks them into smaller chunks, generates vector embeddings, stores them in a Qdrant vector database, and retrieves relevant chunks to answer student queries using an LLM.
+
+### What Exactly is LangChain and Why Every Developer Loves It
+
+![Langchain](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/18.webp)
+
+
+Think of LangChain like a smart assistant builder kit.
+
+Imagine you have this powerful brain, like ChatGPT, but you want it to do more. You want it to read your notes, search your PDFs, pull facts from the internet, or even talk to a database. Doing all that on your own can get really messy. Every AI model works a little differently, and keeping up with new ones is a challenge.
+
+
+![Langchain is like a toolbox](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/19.webp)
+
+That’s where LangChain comes in. It’s like a toolbox that helps your AI connect with everything: files, APIs, databases. It works with any language model you choose. So instead of dealing with all the complicated setup, you can just focus on building cool and useful stuff.
+
+###  Step 1. Install Required Python Libraries
+
+
+Before running any code, make sure you have the necessary libraries installed. You can do this using `pip`.
+
+```python
+pip install langchain langchain-community langchain-huggingface langchain-qdrant qdrant-clientsentence-transformers
+```
+
+![Pip install](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/20.webp)
+
+What these libararies do:
+
+| **Package Name** | **Purpose** |
+| --- | --- |
+| **langchain** | Core framework for chaining LLMs with tool |
+| **langchain-community** | Includes community loaders like `PyPDFLoader` |
+| **langchain-huggingface** | Lets you use HuggingFace embedding models |
+| **langchain-qdrant** | Integration layer between LangChain and Qdrant vector store |
+| **qdrant-client** | Connects to and manages Qdrant database |
+| **sentence-transforme**rs | Required backend for HuggingFace embedding models |
+
+
+###  Step 2. Set Up Qdrant Using Docker 
+
+![Set up Qdrant DB](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/21.webp)
+
+Qdrant is an open-source vector database used for fast similarity search. It's very easy to run locally using Docker.
+
+1. Make sure Docker is installed and running.
+    - Install from: [**Docker Download**](https://www.docker.com/products/docker-desktop)
+2. Run Qdrant container with Docker:
+  ![docker compose](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/22.webp)
+
+
+    If you haven’t already, create a file called `docker-compose.db.yml` and paste the following content inside:
+    ```yaml
+      services:
+    qdrant:
+      image: qdrant/qdrant
+      ports:
+        - 6333:6333
+
+    ```
+    This file defines a single service called `qdrant` using the official Qdrant image and exposes it on port `6333`.
+
+    Open your terminal, navigate to the folder containing `docker-compose.db.yml`, and run `docker compose -f docker-compose.db.yml up`  to start the Qdrant container.
+
+    ![docker compose](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/23.webp)
+
+    ```yaml
+      docker compose -f docker-compose.db.yml up
+
+    ```  
+    After starting the Qdrant container, check the terminal logs for confirmation and verify it’s running by visiting http://localhost:6333/collections in your browser or using curl.
+
+    If it’s working, you’ll get a response like:
+
+    ![qdrant output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/24.webp)
+
+    Create a new Python file by opening your code editor and saving a file with a `.py` extension, like [**`app.py`**].
+
+    This file will contain all the code for loading PDFs, generating embeddings, and interacting with Qdrant.
+
+
+### 3. Load and Split Multiple PDF Files
+  
+```python
+from pathlib import Path
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+```
+
+- `Path` is used to handle file paths.
+- `PyPDFLoader` loads the PDF file into LangChain-compatible document objects.
+- `RecursiveCharacterTextSplitter` breaks the text into smaller chunks for better retrieval later.
+
+```python
+PDF_FILES = [
+    "Attention_is_all_you_need.pdf",
+    "BERT.pdf",
+    "Denosing_diffusion.pdf",
+    "Neural_Machine_Translation.pdf",
+    "Neural_Turing.pdf"
+]
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,     # Each chunk is 1000 characters max
+    chunk_overlap=200    # Each chunk overlaps with the previous one by 200 characters
+)
+
+all_chunks = []
+
+for file_name in PDF_FILES:
+      pdf_path = Path(__file__).parent / "PDFs" / file_name
+    loader = PyPDFLoader(file_path=pdf_path)
+    docs = loader.load()
+    split_docs = text_splitter.split_documents(docs)
+    all_chunks.extend(split_docs)
+
+```
+
+We’re loading five PDF documents and splitting each one into smaller, overlapping chunks, similar to creating flashcards for easier reference. These chunks are then combined and stored in a single list called `all_chunks`, which will later be used to generate embeddings for semantic search.
+
+### Step 4. Generate Embeddings Using OpenAI
+
+```python
+from langchain_openai import OpenAIEmbeddings
+
+embedder = OpenAIEmbeddings(
+    model="text-embedding-3-large",
+    api_key="your-openai-api-key"  # Replace with your actual API key
+)
+```
+This code utilizes OpenAI's embedding model to transform each text chunk into a vector - a numerical representation capturing the semantic meaning of the text. These vectors are essential for performing similarity searches, allowing the system to retrieve relevant information based on the context of a user's query.
+
+**If you don't have an OpenAI API key yet, here's how to obtain one:**
+
+  1. **Create an OpenAI Account**: Visit [**OpenAI's platform**](https://platform.openai.com/signup) and sign up using your email address
+
+      ![create an openAi Account](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/25.webp)
+
+
+  2. **Access the API Keys Section:** After logging in, click on your profile icon in the top-right corner and select "API Keys" from the dropdown menu.
+    ![create an openAi Account](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/26.webp)
+
+  3. **Generate a New API Key:** Click the "Create new secret key" button. A new API key will be generated—make sure to copy and store it securely, as you won't be able to view it again.
+    ![open ai playgroud key](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/27.webp)
+
+      ![create a new openai key](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/28.webp)
+
+  4. **Set Up Billing:** Navigate to the "Billing" section to add a payment method. OpenAI requires a valid payment method to activate API usage.
+      
+      ![create a new openai key](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/29.webp)
+
+
+### Step 5. Store Embeddings in Qdrant (Vector DB)
+
+You can create a separate **`db.py`** file.
+
+I haven't exposed *all_chunks* and *embeder* in  **`app.py`**, but you'll need to do so to use them here. Also this part should be run only **once**
+
+```python
+from langchain_qdrant import QdrantVectorStore
+from app import all_chunks, embedder
+# This part should be run only once
+# It stores all the chunks and their embeddings into Qdrant
+ #You can comment this after the first run
+
+ vector_store = QdrantVectorStore.from_documents(
+     documents=all_chunks,
+     url="http://localhost:6333",
+     collection_name="learning_langchain",
+     embedding=embedder
+ )
+
+print("Documents injected into Qdrant collection.")
+```
+![db.py](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/30.webp)
+
+What’s going on in this code
+
+  - This code saves the embedded chunks into a Qdrant collection.
+  ![collectons](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/31.webp)
+  `collection_name="learning_langchain"`  is just a label you can change.
+
+  - Qdrant will store these vectors and let us search them later.
+    ![qdrant collection](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/32.webp)
+
+### Step 6. Search for Relevant Chunks (Retrieval)
+
+```python
+retriever = QdrantVectorStore.from_existing_collection(
+      url="http://localhost:6333",
+      collection_name="learning_langchain",
+      embedding=embedder
+  )
+
+  query = "What is FS Module?"
+  search_result = retriever.similarity_search(query=query)
+```
+This part of the code connects to the existing Qdrant vector database where all the document chunks are stored. When a user asks a question, the query is converted into an embedding in the same way the document chunks were. Qdrant then compares this query embedding with all the stored embeddings and finds the chunks that are most similar in meaning, making it easy to retrieve the most relevant information.
+
+Now Let’s printout the relevant chunks
+
+```
+  for i, chunk in enumerate(search_result, 1):
+      print(f"\n--- Chunk {i} ---\n{chunk.page_content}")
+
+```
+  ![Output](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/33.webp)
+
+The retrieved text chunks related to the user's question are printed out. These chunks represent the most relevant sections from your PDFs, helping the system provide accurate and context-based answers by focusing only on the parts that closely match the user's query.
+
+Once the most relevant chunks are retrieved from the vector database, they are combined with a system prompt and passed to the language model. This helps the LLM generate a response that is not only fluent and well-structured but also grounded in the actual content of your PDFs, reducing hallucinations and improving accuracy.
+
+You can check out the Entire code on Github:
+
+https://github.com/Mayankpratapsingh022/RAG_Qdrant_DB/
+
+---
+# Final Thoughts
+
+  ![RAG architecture](https://raw.githubusercontent.com/Mayankpratapsingh022/blog-site/refs/heads/master/public/images/blog/RAG/6.gif)
+
+
+**Retrieval-Augmented Generation (RAG) is a powerful technique that makes AI models smarter by letting them look things up instead of relying only on what they were trained on.**
+
+Instead of asking a language model to remember everything, RAG gives it access to external sources like PDFs, websites, or databases. The process starts by loading documents (like course notes) and breaking them into smaller, readable chunks. These chunks are then converted into numerical vectors using embeddings, which capture the meaning of each chunk. The vectors are stored in a fast search engine like Qdrant.
+
+When a user asks a question, the system searches for the most relevant chunks, retrieves them, and feeds them into the language model to generate a grounded and accurate answer. In short, RAG combines the reasoning ability of LLMs with the precision of search — making answers more factual, up-to-date, and context-aware.
+
+---
+
+I hope you found this blog helpful. I'm continuously sharing my learning journey and projects around LLMs, MLOps, and machine learning. If you're exploring these areas too, feel free to connect.
+
+let’s learn and grow together at our own pace.
+
+Find Me on
+
+[**www.mayankpratapsingh.in**](https://www.mayankpratapsingh.in/)
+
+[**LinkedIn/mayankpratapsingh022**](https://www.linkedin.com/in/mayankpratapsingh022/)
+
+[**x.com/Mayank_022**](http://x.com/Mayank_022)
+
+That’s it for today
